@@ -1,57 +1,139 @@
-import type { Activity, BaselineSnapshot, Dependency, Id } from '../domain/types'
-import { error, failure, success, type Result } from './errors'
+import type {
+  Activity,
+  BaselineSnapshot,
+  Dependency,
+  Id,
+} from "../domain/types";
+import { error, failure, success, type Result } from "./errors";
 
-const ordinal = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0
+const ordinal = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 export interface GraphData {
-  readonly activitiesById: Readonly<Record<Id, Activity>>
-  readonly dependenciesBySuccessor: Readonly<Record<Id, readonly Dependency[]>>
-  readonly dependenciesByPredecessor: Readonly<Record<Id, readonly Dependency[]>>
-  readonly topologicalOrder: readonly Id[]
+  readonly activitiesById: Readonly<Record<Id, Activity>>;
+  readonly dependenciesBySuccessor: Readonly<Record<Id, readonly Dependency[]>>;
+  readonly dependenciesByPredecessor: Readonly<
+    Record<Id, readonly Dependency[]>
+  >;
+  readonly topologicalOrder: readonly Id[];
 }
 
-export const validateGraph = (baseline: BaselineSnapshot): Result<GraphData> => {
-  const activitiesById: Record<Id, Activity> = Object.create(null) as Record<Id, Activity>
-  for (const activity of baseline.activities) activitiesById[activity.id] = activity
-  const incoming: Record<Id, number> = Object.create(null) as Record<Id, number>
-  const dependenciesBySuccessor: Record<Id, Dependency[]> = Object.create(null) as Record<Id, Dependency[]>
-  const dependenciesByPredecessor: Record<Id, Dependency[]> = Object.create(null) as Record<Id, Dependency[]>
-  for (const id of Object.keys(activitiesById)) { incoming[id] = 0; dependenciesBySuccessor[id] = []; dependenciesByPredecessor[id] = [] }
-  for (const dependency of baseline.dependencies) {
-    incoming[dependency.successorId] += 1
-    dependenciesBySuccessor[dependency.successorId].push(dependency)
-    dependenciesByPredecessor[dependency.predecessorId].push(dependency)
+export const validateGraph = (
+  baseline: BaselineSnapshot,
+): Result<GraphData> => {
+  const activitiesById: Record<Id, Activity> = Object.create(null) as Record<
+    Id,
+    Activity
+  >;
+  for (const activity of baseline.activities)
+    activitiesById[activity.id] = activity;
+  const incoming: Record<Id, number> = Object.create(null) as Record<
+    Id,
+    number
+  >;
+  const dependenciesBySuccessor: Record<Id, Dependency[]> = Object.create(
+    null,
+  ) as Record<Id, Dependency[]>;
+  const dependenciesByPredecessor: Record<Id, Dependency[]> = Object.create(
+    null,
+  ) as Record<Id, Dependency[]>;
+  for (const id of Object.keys(activitiesById)) {
+    incoming[id] = 0;
+    dependenciesBySuccessor[id] = [];
+    dependenciesByPredecessor[id] = [];
   }
-  for (const deps of Object.values(dependenciesBySuccessor)) deps.sort((a, b) => ordinal(a.id, b.id))
-  for (const deps of Object.values(dependenciesByPredecessor)) deps.sort((a, b) => ordinal(a.id, b.id))
+  for (const dependency of baseline.dependencies) {
+    incoming[dependency.successorId] += 1;
+    dependenciesBySuccessor[dependency.successorId].push(dependency);
+    dependenciesByPredecessor[dependency.predecessorId].push(dependency);
+  }
+  for (const deps of Object.values(dependenciesBySuccessor))
+    deps.sort((a, b) => ordinal(a.id, b.id));
+  for (const deps of Object.values(dependenciesByPredecessor))
+    deps.sort((a, b) => ordinal(a.id, b.id));
 
-  const ready = Object.keys(activitiesById).filter((id) => incoming[id] === 0).sort(ordinal)
-  const topologicalOrder: Id[] = []
+  const ready: Id[] = [];
+  const enqueue = (id: Id) => {
+    let index = ready.length;
+    ready.push(id);
+    while (index > 0) {
+      const parent = (index - 1) >> 1;
+      if (ordinal(ready[parent], ready[index]) <= 0) break;
+      [ready[parent], ready[index]] = [ready[index], ready[parent]];
+      index = parent;
+    }
+  };
+  const dequeue = (): Id => {
+    const first = ready[0],
+      last = ready.pop()!;
+    if (ready.length) {
+      ready[0] = last;
+      let index = 0;
+      while (index * 2 + 1 < ready.length) {
+        const left = index * 2 + 1,
+          right = left + 1;
+        const child =
+          right < ready.length && ordinal(ready[right], ready[left]) < 0
+            ? right
+            : left;
+        if (ordinal(ready[index], ready[child]) <= 0) break;
+        [ready[index], ready[child]] = [ready[child], ready[index]];
+        index = child;
+      }
+    }
+    return first;
+  };
+  for (const id of Object.keys(activitiesById))
+    if (incoming[id] === 0) enqueue(id);
+  const topologicalOrder: Id[] = [];
   while (ready.length > 0) {
-    const id = ready.shift() as Id
-    topologicalOrder.push(id)
+    const id = dequeue();
+    topologicalOrder.push(id);
     for (const dependency of dependenciesByPredecessor[id]) {
-      incoming[dependency.successorId] -= 1
+      incoming[dependency.successorId] -= 1;
       if (incoming[dependency.successorId] === 0) {
-        ready.push(dependency.successorId)
-        ready.sort(ordinal)
+        enqueue(dependency.successorId);
       }
     }
   }
-  if (topologicalOrder.length === baseline.activities.length) return success({ activitiesById, dependenciesBySuccessor, dependenciesByPredecessor, topologicalOrder })
+  if (topologicalOrder.length === baseline.activities.length)
+    return success({
+      activitiesById,
+      dependenciesBySuccessor,
+      dependenciesByPredecessor,
+      topologicalOrder,
+    });
 
-  const unresolved = new Set(Object.keys(activitiesById).filter((id) => !topologicalOrder.includes(id)))
-  const visiting = new Set<Id>()
-  const visited = new Set<Id>()
-  const path: Id[] = []
-  let witness: Id[] = []
+  const unresolved = new Set(
+    Object.keys(activitiesById).filter((id) => !topologicalOrder.includes(id)),
+  );
+  const visiting = new Set<Id>();
+  const visited = new Set<Id>();
+  const path: Id[] = [];
+  let witness: Id[] = [];
   const visit = (id: Id): boolean => {
-    if (visiting.has(id)) { const index = path.indexOf(id); witness = [...path.slice(index), id]; return true }
-    if (visited.has(id) || !unresolved.has(id)) return false
-    visiting.add(id); path.push(id)
-    for (const dependency of dependenciesByPredecessor[id]) if (visit(dependency.successorId)) return true
-    path.pop(); visiting.delete(id); visited.add(id); return false
-  }
-  for (const id of [...unresolved].sort(ordinal)) if (visit(id)) break
-  return failure(error('CYCLE', '/baseline/dependencies', 'Dependency graph contains a cycle.', null, witness))
-}
+    if (visiting.has(id)) {
+      const index = path.indexOf(id);
+      witness = [...path.slice(index), id];
+      return true;
+    }
+    if (visited.has(id) || !unresolved.has(id)) return false;
+    visiting.add(id);
+    path.push(id);
+    for (const dependency of dependenciesByPredecessor[id])
+      if (visit(dependency.successorId)) return true;
+    path.pop();
+    visiting.delete(id);
+    visited.add(id);
+    return false;
+  };
+  for (const id of [...unresolved].sort(ordinal)) if (visit(id)) break;
+  return failure(
+    error(
+      "CYCLE",
+      "/baseline/dependencies",
+      "Dependency graph contains a cycle.",
+      null,
+      witness,
+    ),
+  );
+};
