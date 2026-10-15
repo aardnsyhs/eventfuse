@@ -1,0 +1,146 @@
+// Presentation-only freeze-1 example. Phase 3B replaces these props with controller selectors.
+export const eventSample = {
+  name: "Corporate Product Launch",
+  date: "2026-10-15",
+  timezone: "Asia/Jakarta",
+  referenceInstant: "2026-10-15T01:00:00Z",
+  currency: "USD",
+  dateLabel: "15 OCT 2026 · ASIA/JAKARTA · ALL TIMES LOCAL",
+} as const;
+
+export const activities = [
+  {
+    id: "power",
+    name: "Power Installation",
+    owner: "Electrical lead",
+    duration: 120,
+    earliest: "08:00",
+    baseline: "08:00–10:00",
+    incident: "12:00–14:00",
+    a: "10:00–12:00",
+    b: "12:00–14:00",
+    delta: "+4h",
+    predecessors: "None",
+    classification: "normal",
+  },
+  {
+    id: "audio",
+    name: "Audio Setup",
+    owner: "Audio lead",
+    duration: 120,
+    earliest: "08:00",
+    baseline: "10:00–12:00",
+    incident: "14:00–16:00",
+    a: "12:00–14:00",
+    b: "14:00–15:00",
+    delta: "+4h",
+    predecessors: "Power Installation",
+    classification: "normal",
+  },
+  {
+    id: "lighting",
+    name: "Lighting Setup",
+    owner: "Lighting lead",
+    duration: 120,
+    earliest: "08:00",
+    baseline: "10:00–12:00",
+    incident: "14:00–16:00",
+    a: "12:00–14:00",
+    b: "14:00–15:00",
+    delta: "+4h",
+    predecessors: "Power Installation",
+    classification: "normal",
+  },
+  {
+    id: "testing",
+    name: "System Testing",
+    owner: "Technical director",
+    duration: 60,
+    earliest: "13:00",
+    baseline: "13:00–14:00",
+    incident: "16:00–17:00",
+    a: "14:00–15:00",
+    b: "15:00–16:00",
+    delta: "+3h",
+    predecessors: "Audio AND Lighting",
+    classification: "protected",
+  },
+  {
+    id: "rehearsal",
+    name: "Full Rehearsal",
+    owner: "Show caller",
+    duration: 120,
+    earliest: "08:00",
+    baseline: "14:00–16:00",
+    incident: "17:00–19:00",
+    a: "15:00–17:00",
+    b: "16:00–18:00",
+    delta: "+3h",
+    predecessors: "System Testing",
+    classification: "normal",
+  },
+  {
+    id: "doors",
+    name: "Doors Open",
+    owner: "Front of house",
+    duration: 0,
+    earliest: "17:00",
+    baseline: "17:00",
+    incident: "19:00",
+    a: "17:00",
+    b: "18:00",
+    delta: "+2h",
+    predecessors: "Full Rehearsal",
+    classification: "normal",
+  },
+] as const;
+export type SampleActivity = (typeof activities)[number];
+export type OptionId = "a" | "b";
+export const recoverySamples = {
+  a: {
+    title: "Earlier vendor arrival",
+    time: "17:00",
+    recovered: 120,
+    breach: 0,
+    shifted: 5,
+    downstreamShifted: 4,
+    costMinorUnits: null,
+    approvalStatus: "pending",
+    change: "Replace Power’s permissible start: 12:00 → 10:00.",
+    condition:
+      "Feasible only if the vendor confirms the revised arrival. This does not assert availability.",
+    approval: "Vendor confirmation pending",
+  },
+  b: {
+    title: "Parallel setup compression",
+    time: "18:00",
+    recovered: 60,
+    breach: 60,
+    shifted: 6,
+    downstreamShifted: 5,
+    costMinorUnits: null,
+    approvalStatus: "pending",
+    change: "Keep Power 12:00–14:00. Audio and Lighting: 120 → 60 min EACH.",
+    condition:
+      "Feasible only if the technical director and relevant suppliers approve revised methods. No linear crew-savings assumption.",
+    approval: "Technical director + relevant suppliers pending",
+  },
+} as const;
+export const graphConnections = [
+  ["power-audio", "power", "audio"],
+  ["power-lighting", "power", "lighting"],
+  ["audio-testing", "audio", "testing"],
+  ["lighting-testing", "lighting", "testing"],
+  ["testing-rehearsal", "testing", "rehearsal"],
+  ["rehearsal-doors", "rehearsal", "doors"],
+] as const;
+export const workflow = [
+  { route: "blueprint", label: "Blueprint", mobile: "Plan" },
+  { route: "scenario", label: "Scenario Lab", mobile: "Disrupt" },
+  { route: "compare", label: "Recovery Compare", mobile: "Compare" },
+  { route: "brief", label: "Decision Brief", mobile: "Brief" },
+] as const;
+export type Screen =
+  | "landing"
+  | "workspace"
+  | (typeof workflow)[number]["route"];

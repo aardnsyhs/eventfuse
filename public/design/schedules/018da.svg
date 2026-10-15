@@ -1,0 +1,12 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="652" height="30" viewBox="0 0 652 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Schedule bars" clip-path="url(#clip0_0_19)">
+<path id="Baseline bar" d="M232.227 2.5V25.5H116.864V2.5H232.227Z" fill="#DADCD4" stroke="#626A63"/>
+<path id="Deadline marker" d="M523.636 0H525.636V30H523.636V0Z" fill="#AE402E"/>
+<path id="Hour rules" d="M0 0V30M58.1818 0V30M116.364 0V30M174.545 0V30M232.727 0V30M290.909 0V30M349.091 0V30M407.273 0V30M465.455 0V30M523.636 0V30M581.818 0V30M640 0V30" stroke="#C9CDC3" stroke-width="0.5"/>
+</g>
+<defs>
+<clipPath id="clip0_0_19">
+<rect width="652" height="30" fill="white"/>
+</clipPath>
+</defs>
+</svg>
