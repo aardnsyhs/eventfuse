@@ -1,15 +1,25 @@
 import { ArrowUpRight } from "lucide-react";
-import { Kicker, LinkButton, Panel, Status } from "@/presentation/shared";
+import { Kicker, Panel, Status } from "@/presentation/shared";
+import { DemoEntry } from "@/presentation/DemoEntry";
 import { Schedule } from "@/presentation/Schedule";
-import { recoverySamples } from "@/presentation/sample";
+import { referenceDemo } from "@/demo/reference";
+import { demoOptionA, demoOptionB } from "@/demo/fixtures";
+import { MilestoneMetrics } from "@/presentation/MilestoneMetrics";
+import { eventTime } from "@/presentation/app/time";
+import { moneyLabel } from "@/presentation/app/format";
 
 export function Landing() {
+  const baseline = referenceDemo.activeBaseline!,
+    impact = referenceDemo.impact!;
   return (
     <>
-      <header className="flex items-center justify-between gap-4 border-b px-5 py-4 md:px-8">
+      <header
+        id="landing"
+        className="flex flex-wrap items-center justify-between gap-4 border-b px-5 py-4 md:px-8"
+      >
         <a
           href="#landing"
-          className="py-2 text-[23px] font-bold tracking-[-0.8px]"
+          className="inline-flex min-h-11 items-center py-2 text-[1.4375rem] font-bold tracking-[-0.8px]"
         >
           EventFuse
         </a>
@@ -17,11 +27,15 @@ export function Landing() {
           aria-label="About EventFuse"
           className="hidden gap-7 font-mono text-xs text-muted-foreground md:flex"
         >
-          <a href="#why">Why EventFuse</a>
-          <a href="#workflow">The workflow</a>
+          <a href="#why" className="inline-flex min-h-11 items-center">
+            Why EventFuse
+          </a>
+          <a href="#workflow" className="inline-flex min-h-11 items-center">
+            The workflow
+          </a>
           <span>Fictional demo</span>
         </nav>
-        <LinkButton to="workspace">Open demo</LinkButton>
+        <DemoEntry>Open demo</DemoEntry>
       </header>
       <main
         id="main-content"
@@ -32,7 +46,7 @@ export function Landing() {
           <Kicker>01 / Contingency intelligence for event production</Kicker>
           <h1
             tabIndex={-1}
-            className="max-w-[1100px] text-5xl leading-[1.08] font-semibold tracking-[-1.5px] outline-none md:text-[80px]"
+            className="max-w-[1100px] text-5xl leading-[1.08] font-semibold tracking-[-1.5px] outline-none md:text-[5rem]"
           >
             Know what breaks
             <br className="hidden sm:block" /> before it happens.
@@ -44,9 +58,9 @@ export function Landing() {
               clear proposal into the production meeting.
             </p>
             <div className="space-y-3 md:self-center">
-              <LinkButton to="workspace" className="w-full sm:w-auto">
+              <DemoEntry className="w-full sm:w-auto">
                 Open the fictional demo
-              </LinkButton>
+              </DemoEntry>
               <p className="text-xs text-muted-foreground">
                 No login · Local-first · Your own isolated example
               </p>
@@ -57,23 +71,32 @@ export function Landing() {
           <Kicker>02 / A schedule you can read</Kicker>
           <h2>One delayed start. A visible chain.</h2>
           <p>
-            Corporate Product Launch · 15 Oct 2026 · Asia/Jakarta. Power begins
-            at 12:00 instead of 08:00. The original schedule stays intact.
+            {baseline.event.name} · {baseline.event.date} ·{" "}
+            {baseline.event.timezone}. Power begins at{" "}
+            {eventTime(
+              baseline.event,
+              impact.activityTimings.power.startMinute,
+            )}{" "}
+            instead of{" "}
+            {eventTime(
+              baseline.event,
+              referenceDemo.baselineResult!.activityTimings.power.startMinute,
+            )}
+            . The original schedule stays intact.
           </p>
           <div className="hidden md:block">
-            <Schedule mode="incident" compact />
+            <Schedule
+              baseline={baseline}
+              result={impact}
+              reference={referenceDemo.baselineResult}
+              compact
+            />
           </div>
           <Panel className="md:hidden">
-            <Status tone="danger">Deadline breach · 120 min</Status>
-            <p className="text-[40px] font-semibold tracking-tight">
-              17:00 → 19:00
-            </p>
-            <p className="font-mono text-sm">
-              Power 12–14 → Audio + Lighting 14–16 → Testing 16–17 → Rehearsal
-              17–19 → Doors 19:00
-            </p>
+            <MilestoneMetrics baseline={baseline} result={impact} />
             <p className="text-xs text-muted-foreground">
-              Fictional, deterministic example. Baseline Doors Open: 17:00.
+              Fictional, deterministic example calculated from canonical demo
+              inputs.
             </p>
           </Panel>
         </section>
@@ -164,8 +187,7 @@ export function Landing() {
           <p className="text-lg">
             For small and medium production teams preparing corporate launches,
             conferences, exhibitions, and technically interdependent events. Use
-            EventFuse alongside the tools you already use—as a companion to your
-            event management platform.
+            EventFuse alongside your event management platform.
           </p>
           <p className="text-xs text-muted-foreground">
             Designed around production decision-making hypotheses. No customer
@@ -176,24 +198,28 @@ export function Landing() {
           <Kicker>07 / Try the exact example</Kicker>
           <h2>Four hours late. Two responses to discuss.</h2>
           <div className="grid gap-6 md:grid-cols-2">
-            {(["a", "b"] as const).map((id) => (
-              <Panel key={id}>
-                <Kicker>
-                  {id} / {recoverySamples[id].title}
-                </Kicker>
-                <h3 className="text-[40px]">
-                  Doors {recoverySamples[id].time}
-                </h3>
-                <p>
-                  {recoverySamples[id].change} Recovers{" "}
-                  {recoverySamples[id].recovered} min versus the incident.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Additional cost: Not entered.
-                </p>
-                <Status tone="warning">{recoverySamples[id].approval}</Status>
-              </Panel>
-            ))}
+            {referenceDemo.optionResults.map((alternative, index) => {
+              if (!alternative.result.ok) return null;
+              const result = alternative.result.value,
+                source = [demoOptionA, demoOptionB][index];
+              return (
+                <Panel key={alternative.recoveryOptionId}>
+                  <Kicker>
+                    {String.fromCharCode(65 + index)} / {source.name}
+                  </Kicker>
+                  <MilestoneMetrics baseline={baseline} result={result} />
+                  <p>{source.description}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Additional cost:{" "}
+                    {moneyLabel(result.recoveryCostMinorUnits, result.currency)}
+                    .
+                  </p>
+                  <Status tone="warning">
+                    Approval {result.approvalStatus}
+                  </Status>
+                </Panel>
+              );
+            })}
           </div>
         </section>
         <section className="space-y-6 px-5 py-10 md:px-16 md:py-14">
@@ -202,15 +228,13 @@ export function Landing() {
           <p>
             Explore the fictional Corporate Product Launch and its Power delay.
           </p>
-          <LinkButton to="workspace">
-            Open demo · no account required
-          </LinkButton>
+          <DemoEntry>Open demo · no account required</DemoEntry>
           <div className="mt-10 flex flex-col justify-between gap-5 border-t pt-6 md:flex-row">
             <p className="text-xl font-bold">EventFuse</p>
             <p className="max-w-[720px] text-xs text-muted-foreground">
-              Local-first browser MVP · Fictional data only. This Phase 3A
-              visual preview is not a live simulation. No guarantee of readiness
-              or authorization to proceed.{" "}
+              Local-first browser MVP · This page shows the canonical fictional
+              example. Open the workspace to edit and simulate. No guarantee of
+              readiness or authorization to proceed.{" "}
               <ArrowUpRight className="inline size-3" aria-hidden="true" />
             </p>
           </div>

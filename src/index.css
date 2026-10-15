@@ -53,6 +53,7 @@
   --color-warning-soft: #f3e7cc;
   --color-danger-soft: #f8e5dd;
   --color-night: #182e27;
+  --color-baseline-fill: #dadcd4;
   --radius-sm: 2px;
   --radius-md: 4px;
   --radius-lg: 4px;
@@ -65,6 +66,7 @@
   }
   body {
     @apply m-0 bg-background font-sans text-base leading-[1.45] text-foreground antialiased;
+    overflow-wrap: anywhere;
   }
   button,
   a,
@@ -97,17 +99,13 @@
     @apply bg-secondary text-foreground;
   }
 }
-/* Preserve the Figma SVG coordinate space rather than stretching its timing marks. */
-.timeline-track {
-  width: 652px;
-}
 .react-flow__handle {
   background: var(--primary);
   border-color: var(--card);
 }
 .react-flow__controls-button {
   background: var(--card);
-  border-color: var(--border);
+  border-color: var(--muted-foreground);
   color: var(--foreground);
   min-width: 44px;
   min-height: 44px;
@@ -115,12 +113,49 @@
 .react-flow__controls-button svg {
   fill: currentColor;
 }
+.react-flow .react-flow__attribution a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--primary);
+}
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  header,
+  nav,
+  footer,
+  .no-print,
+  [aria-label="Workspace saving"],
+  .decision-brief ~ * {
+    display: none !important;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  main > :not(.decision-brief) {
+    display: none !important;
+  }
+  .decision-brief {
+    border: 0;
+    padding: 0;
+    opacity: 1 !important;
+    print-color-adjust: exact;
+  }
+  .decision-brief section,
+  .decision-brief li {
+    break-inside: avoid;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
     scroll-behavior: auto !important;
   }
 }

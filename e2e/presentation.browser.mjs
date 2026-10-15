@@ -1,10 +1,23 @@
 import { test, expect } from "@playwright/test";
 
+const faultsByPage = new WeakMap();
+test.beforeEach(async ({ page }) => {
+  const faults = [];
+  faultsByPage.set(page, faults);
+  page.on("console", (message) => {
+    if (message.type() === "error") faults.push(message.text());
+  });
+  page.on("pageerror", (error) => faults.push(error.message));
+});
+test.afterEach(async ({ page }) => {
+  expect(faultsByPage.get(page)).toEqual([]);
+});
+
 const screens = {
   landing: "Know what breaks before it happens.",
-  workspace: "Corporate Product Launch",
+  workspace: "Fictional corporate product launch",
   blueprint: "The production blueprint",
-  scenario: "Four hours late. Two hours over.",
+  scenario: "Trace the disruption.",
   compare: "Compare responses. Keep the conditions.",
   brief: "A proposal for the production meeting.",
 };
@@ -30,14 +43,14 @@ for (const width of [320, 375, 390, 768, 1024, 1440]) {
         ).toBeVisible();
       if ([390, 1440].includes(width))
         await page.screenshot({
-          path: `/tmp/eventfuse-phase3a-${route}-${width}.png`,
+          path: `/tmp/eventfuse-phase3b-${route}-${width}.png`,
           fullPage: true,
         });
     });
   }
 }
 
-test("navigation, no initial preference, explicit preview selection and conditional brief", async ({
+test("navigation, no initial preference, explicit selection and conditional brief", async ({
   page,
 }) => {
   await page.goto("/");
@@ -57,7 +70,7 @@ test("navigation, no initial preference, explicit preview selection and conditio
   ).toBeVisible();
   await expect(
     page.getByRole("button", {
-      name: "Select a proposal to view its example brief",
+      name: "Select a proposal to prepare its brief",
     }),
   ).toBeDisabled();
   await page
@@ -65,28 +78,32 @@ test("navigation, no initial preference, explicit preview selection and conditio
     .first()
     .click();
   await expect(
-    page.getByRole("button", { name: "✓ Preferred proposal · not approved" }),
+    page.getByRole("button", { name: "✓ Preferred proposal · not authorized" }),
   ).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole('button', { name: '✓ Preferred proposal · not approved' }).click();
-  await expect(page.getByRole('button', { name: '✓ Preferred proposal · not approved' })).toHaveAttribute('aria-pressed', 'true');
+  await page
+    .getByRole("button", { name: "✓ Preferred proposal · not authorized" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "✓ Preferred proposal · not authorized" }),
+  ).toHaveAttribute("aria-pressed", "true");
   await page
     .getByRole("button", { name: "View A timings & assumptions" })
     .click();
   await expect(page.locator("#option-detail-a")).toBeVisible();
-  await page
-    .getByRole("link", { name: "View example brief with proposal A" })
-    .click();
+  await page.getByRole("link", { name: "Prepare decision brief" }).click();
+  await page.getByRole("button", { name: "Prepare brief snapshot" }).click();
   await expect(page.getByRole("article")).toContainText(
-    "Additional cost: Not entered.",
+    "Additional cost: Not entered",
   );
   await expect(
     page.getByText(
       "Selection does not authorize work; pending approvals remain outstanding.",
+      { exact: true },
     ),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Copy brief", exact: true }),
-  ).toBeDisabled();
+  ).toBeEnabled();
 });
 
 test("dialog keyboard focus, Escape and focus return", async ({ page }) => {
@@ -118,11 +135,11 @@ test("graph renders six nodes, six edges and an accessible text equivalent", asy
   await expect(page.locator(".react-flow__node")).toHaveCount(6);
   await expect(page.locator(".react-flow__edge")).toHaveCount(6);
   await expect(
-    page.getByText(
-      "Power → Audio AND Lighting → System Testing → Full Rehearsal → Doors Open.",
-      { exact: true },
-    ),
-  ).toBeVisible();
+    page.getByRole("list", { name: "Dependency list" }).getByRole("listitem"),
+  ).toHaveCount(6);
+  await expect(
+    page.getByRole("list", { name: "Dependency list" }),
+  ).toContainText("Lighting → System Testing · lag 0 min");
 });
 
 test("reduced motion and 200% text retain mobile access", async ({ page }) => {
@@ -142,6 +159,11 @@ test("reduced motion and 200% text retain mobile access", async ({ page }) => {
     .getByRole("button", { name: "View B timings & assumptions" })
     .click();
   await expect(page.locator("#option-detail-b")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth - innerWidth,
+    ),
+  ).toBeLessThanOrEqual(1);
 });
 
 test("keyboard skip link reaches main content", async ({ page }) => {
@@ -156,55 +178,66 @@ test("keyboard skip link reaches main content", async ({ page }) => {
   );
 });
 
-test("Figma timeline assets load in their correct rows at native geometry", async ({
+test("dynamic timeline preserves timing geometry, parallel rows and milestone boundaries", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  for (const [route, filenames, height] of [
+  for (const [route, timings, horizon] of [
     [
       "blueprint",
       [
-        "70599.svg",
-        "018da.svg",
-        "018da.svg",
-        "6bfd4.svg",
-        "a0186.svg",
-        "b29e0.svg",
+        [0, 120],
+        [120, 240],
+        [120, 240],
+        [300, 360],
+        [360, 480],
+        [540, 540],
       ],
-      30,
+      660,
     ],
     [
       "scenario",
       [
-        "7dd30.svg",
-        "c9e9e.svg",
-        "c9e9e.svg",
-        "d47a3.svg",
-        "edb61.svg",
-        "aaf96.svg",
+        [240, 360],
+        [360, 480],
+        [360, 480],
+        [480, 540],
+        [540, 660],
+        [660, 660],
       ],
-      42,
+      660,
     ],
   ]) {
     await page.goto(`/#${route}`);
-    const images = page.locator(".timeline-track img");
-    await expect(images).toHaveCount(6);
-    for (let i = 0; i < 6; i++) {
-      const image = images.nth(i);
-      await expect(image).toHaveAttribute(
-        "src",
-        `/design/schedules/${filenames[i]}`,
+    const tracks = page.locator("[data-timeline-track]");
+    await expect(tracks).toHaveCount(6);
+    await expect(page.locator('main img[src*="schedules"]')).toHaveCount(0);
+    for (let i = 0; i < 5; i++) {
+      const values = await tracks
+        .nth(i)
+        .locator("[data-scenario-bar]")
+        .evaluate((el) => ({
+          left: parseFloat(el.style.left),
+          width: parseFloat(el.style.width),
+        }));
+      expect(values.left).toBeCloseTo((timings[i][0] / horizon) * 100, 3);
+      expect(values.width).toBeCloseTo(
+        ((timings[i][1] - timings[i][0]) / horizon) * 100,
+        3,
       );
-      await expect
-        .poll(() => image.evaluate((el) => el.complete && el.naturalWidth > 0))
-        .toBe(true);
-      expect(
-        await image.evaluate((el) => ({
-          w: el.getBoundingClientRect().width,
-          h: el.getBoundingClientRect().height,
-        })),
-      ).toEqual({ w: 652, h: height });
     }
+    await expect(tracks.nth(5).locator("[data-milestone-marker]")).toHaveCSS(
+      "left",
+      /.+px/,
+    );
+    expect(
+      parseFloat(
+        await tracks
+          .nth(5)
+          .locator("[data-milestone-marker]")
+          .evaluate((el) => el.style.left),
+      ),
+    ).toBeCloseTo((timings[5][1] / horizon) * 100, 3);
   }
 });
 

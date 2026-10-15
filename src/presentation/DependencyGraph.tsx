@@ -1,19 +1,20 @@
-import {
-  Handle,
-  Position,
-  ReactFlow,
-  Controls,
-  useNodesState,
+import { useState } from "react";
+import { Handle, Position, ReactFlow, Controls } from "@xyflow/react";
+import type {
+  Edge,
+  Node,
+  NodeProps,
+  NodeChange,
+  XYPosition,
 } from "@xyflow/react";
-import type { Edge, Node, NodeProps } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { activities, graphConnections } from "@/presentation/sample";
+import type { BaselineSnapshot } from "@/engine";
 import { Kicker } from "@/presentation/shared";
 
 type ActivityNode = Node<{ label: string; detail: string }, "activity">;
 function ActivityCard({ data }: NodeProps<ActivityNode>) {
   return (
-    <div className="w-[190px] space-y-3 border bg-card p-4 text-sm">
+    <div className="w-[190px] space-y-3 border border-muted-foreground bg-card p-4 text-sm">
       <Handle type="target" position={Position.Left} />
       <p className="font-semibold">{data.label}</p>
       <p className="text-xs text-muted-foreground">{data.detail}</p>
@@ -22,48 +23,51 @@ function ActivityCard({ data }: NodeProps<ActivityNode>) {
   );
 }
 const nodeTypes = { activity: ActivityCard };
-const positions = [
-  { x: 0, y: 70 },
-  { x: 235, y: 0 },
-  { x: 235, y: 140 },
-  { x: 470, y: 70 },
-  { x: 705, y: 70 },
-  { x: 940, y: 70 },
-];
-const initialNodes: ActivityNode[] = activities.map((a, i) => ({
-  id: a.id,
-  type: "activity",
-  position: positions[i],
-  data: {
-    label: a.name,
-    detail:
-      a.id === "testing"
-        ? "60 min · protected"
-        : a.id === "doors"
-          ? "17:00 deadline"
-          : `${a.duration} min`,
-  },
-  ariaLabel: `${a.name}. ${a.duration} minutes. Predecessors: ${a.predecessors}.`,
-  focusable: true,
-}));
-const edges: Edge<Record<string, never>, "smoothstep">[] = graphConnections.map(
-  ([id, source, target]) => ({
-    id,
-    source,
-    target,
-    type: "smoothstep",
-    style: { stroke: "var(--primary)" },
-    ariaLabel: `${source} precedes ${target}`,
-  }),
-);
-export function DependencyGraph() {
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+export function DependencyGraph({ baseline }: { baseline: BaselineSnapshot }) {
+  const [positions, setPositions] = useState<Record<string, XYPosition>>({});
+  const nodes: ActivityNode[] = baseline.activities.map((activity, index) => ({
+    id: activity.id,
+    type: "activity",
+    position: positions[activity.id] ?? {
+      x: index * 235,
+      y: (index % 2) * 130,
+    },
+    data: {
+      label: activity.name,
+      detail: `${activity.durationMinutes} min · ${activity.classification}`,
+    },
+    ariaLabel: `${activity.name}. ${activity.durationMinutes} minutes.`,
+    focusable: true,
+  }));
+  const edges: Edge<Record<string, never>, "smoothstep">[] =
+    baseline.dependencies.map((d) => ({
+      id: d.id,
+      source: d.predecessorId,
+      target: d.successorId,
+      type: "smoothstep",
+      label: `${d.lagMinutes} min`,
+      style: { stroke: "var(--primary)" },
+      ariaLabel: `${d.predecessorId} precedes ${d.successorId}, lag ${d.lagMinutes} minutes`,
+    }));
+  const onNodesChange = (changes: NodeChange<ActivityNode>[]) => {
+    if (
+      !changes.some((change) => change.type === "position" && change.position)
+    )
+      return;
+    setPositions((previous) => {
+      const next = { ...previous };
+      for (const change of changes)
+        if (change.type === "position" && change.position)
+          next[change.id] = change.position;
+      return next;
+    });
+  };
   return (
     <section
       className="space-y-4 bg-secondary p-4 md:p-5"
       aria-label="Activity dependency explorer"
     >
-      <Kicker>Relationship inspection / finish → start / lag 0 min</Kicker>
+      <Kicker>Relationship inspection / finish → start</Kicker>
       <div className="h-[300px] min-w-0">
         <ReactFlow<ActivityNode>
           nodes={nodes}
@@ -74,20 +78,27 @@ export function DependencyGraph() {
           edgesReconnectable={false}
           deleteKeyCode={null}
           fitView
-          minZoom={0.25}
+          minZoom={0.1}
           maxZoom={1.5}
-          proOptions={{ hideAttribution: false }}
         >
           <Controls showInteractive={false} />
         </ReactFlow>
       </div>
-      <p className="text-sm">
-        Power → Audio AND Lighting → System Testing → Full Rehearsal → Doors
-        Open.
-      </p>
+      <ul className="space-y-2 text-sm" aria-label="Dependency list">
+        {baseline.dependencies.map((d) => (
+          <li key={d.id}>
+            {baseline.activities.find((a) => a.id === d.predecessorId)?.name ??
+              d.predecessorId}{" "}
+            →{" "}
+            {baseline.activities.find((a) => a.id === d.successorId)?.name ??
+              d.successorId}{" "}
+            · lag {d.lagMinutes} min
+          </li>
+        ))}
+      </ul>
       <p className="text-xs text-muted-foreground">
-        Both parallel setups must finish before Testing. Dragging changes this
-        view only. This is not critical-path analysis.
+        Dragging changes this view only. The list is the keyboard and mobile
+        alternative. This is not critical-path analysis.
       </p>
     </section>
   );

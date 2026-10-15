@@ -3,7 +3,7 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "**/*.browser.mjs",
-  outputDir: "/tmp/eventfuse-phase3a-browser-results",
+  outputDir: "/tmp/eventfuse-phase3b-browser-results",
   fullyParallel: false,
   workers: 1,
   reporter: "list",

@@ -1,219 +1,374 @@
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import type { RecoveryOption, ScenarioResult } from "@/engine";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Heading,
   Kicker,
   LinkButton,
   Notice,
   Panel,
-  PreviewField,
   Status,
 } from "@/presentation/shared";
-import { activities, recoverySamples } from "@/presentation/sample";
-import type { OptionId } from "@/presentation/sample";
+import { Confirm, Errors } from "@/presentation/forms";
+import { RecoveryEditor } from "@/presentation/RecoveryEditor";
+import { Schedule } from "@/presentation/Schedule";
+import { MilestoneMetrics } from "@/presentation/MilestoneMetrics";
+import { useLive } from "@/presentation/app/live";
+import { moneyLabel, ordinalId } from "@/presentation/app/format";
+import { demoOptionA, demoOptionB } from "@/demo/fixtures";
 
 function RecoveryCard({
-  id,
-  selected,
-  onSelect,
+  option,
+  index,
+  result,
+  draft,
 }: {
-  id: OptionId;
-  selected: boolean;
-  onSelect: () => void;
+  option: RecoveryOption;
+  index: number;
+  result: ScenarioResult | null;
+  draft: boolean;
 }) {
+  const { state, view, dispatch } = useLive(),
+    incidentId = state.document!.activeIncidentId!;
   const [expanded, setExpanded] = useState(false),
-    reduced = useReducedMotion(),
-    option = recoverySamples[id];
+    reduced = useReducedMotion();
+  const selected = view.selected?.id === option.id,
+    letter = ordinalId(index);
   return (
     <Panel className={selected ? "border-2 border-primary" : ""}>
       <Kicker>
-        Option {id} / {selected ? "preferred proposal" : "alternative"}
+        Option {letter} /{" "}
+        {selected
+          ? "preferred proposal"
+          : draft
+            ? "unapplied draft"
+            : "alternative"}
       </Kicker>
-      <h2 className="min-h-[60px]">{option.title}</h2>
-      <Status tone="warning">Simulation · pending approval</Status>
-      <div className="space-y-2 border-y py-5">
-        <p className="text-[56px] leading-tight font-semibold tracking-[-1.5px]">
-          {option.time}
+      <h2>{option.name}</h2>
+      <Status
+        tone={option.approvalStatus === "pending" ? "warning" : "neutral"}
+      >
+        Hypothetical · approval {option.approvalStatus.replace("_", " ")}
+      </Status>
+      <MilestoneMetrics baseline={view.activeBaseline!} result={result} />
+      {!result && (
+        <p role="status" className="text-sm">
+          {draft
+            ? "Apply this option draft, then Compare to calculate its result."
+            : "Compare current applied options to see this result."}
         </p>
-        <p className="font-semibold">
-          Doors Open ·{" "}
-          {option.breach === 0
-            ? "on target, conditional"
-            : "60 min deadline breach"}
+      )}
+      <p>{option.description}</p>
+      <p className="font-semibold">
+        Additional cost: {moneyLabel(option.costMinorUnits, option.currency)}
+      </p>
+      {option.approvalContext && (
+        <p className="text-sm">
+          External approval context: {option.approvalContext}
         </p>
-        <p className="font-mono text-sm">
-          {option.recovered} min recovered vs incident 19:00
+      )}
+      {option.approvalRequirements?.map((r, i) => (
+        <p key={i} className="text-sm">
+          {r.approverLabel}: {r.condition}
         </p>
+      ))}
+      <ul className="space-y-2 text-sm">
+        {option.modifications.map((m) => (
+          <li key={`${m.activityId}:${m.field}`}>
+            {
+              view.activeBaseline!.activities.find((a) => a.id === m.activityId)
+                ?.name
+            }{" "}
+            · {m.field.replace("_", " ")} · {m.operation} {m.valueMinutes}{" "}
+            elapsed min
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-wrap gap-3">
+        <RecoveryEditor option={option} />
+        {draft && (
+          <Button
+            className="min-h-11"
+            onClick={() =>
+              dispatch({
+                type: "recovery.apply",
+                expectedIncidentId: incidentId,
+                id: option.id,
+              })
+            }
+          >
+            Apply option {letter}
+          </Button>
+        )}
+        <Confirm
+          label="Delete option"
+          action={() => {
+            dispatch({
+              type: "recovery.remove",
+              expectedIncidentId: incidentId,
+              id: option.id,
+            });
+          }}
+        >
+          Delete this option and clear its preference? Prepared briefs retain
+          their frozen snapshots.
+        </Confirm>
       </div>
-      <p className="min-h-11 font-semibold">{option.change}</p>
-      <p className="min-h-16 text-sm">{option.condition}</p>
-      <p className="text-sm md:hidden">Additional cost: Not entered · USD</p>
-      <div className="hidden space-y-5 md:block">
-        <PreviewField
-          id={`cost-${id}`}
-          label="Additional cost estimate"
-          value="Not entered"
-          hint="Unknown ≠ zero. Enter an estimate only when available."
-        />
-        <PreviewField
-          id={`currency-${id}`}
-          label="Currency"
-          value="USD"
-          hint="Currency selection does not imply an amount."
-        />
-      </div>
-      <div className="space-y-2">
-        <Kicker>Approval / recorded status only</Kicker>
-        <p className="text-sm font-semibold">{option.approval}</p>
-        <p className="text-xs text-muted-foreground">
-          Pending / confirmed / not required records status, never authorization
-          to proceed.
-        </p>
-      </div>
-      <Separator />
       <Button
         variant="outline"
         className="min-h-11 h-auto w-full whitespace-normal py-3"
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
-        aria-controls={`option-detail-${id}`}
+        aria-controls={`option-detail-${letter.toLowerCase()}`}
       >
-        {expanded ? "Hide" : "View"} {id.toUpperCase()} timings & assumptions
+        {expanded ? "Hide" : "View"} {letter} timings & assumptions
       </Button>
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div
-            id={`option-detail-${id}`}
+            id={`option-detail-${letter.toLowerCase()}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: reduced ? 0 : 0.15 }}
             className="space-y-4"
           >
-            <Kicker>Details / example timings</Kicker>
-            <dl>
-              {activities.map((a) => (
-                <div
-                  key={a.id}
-                  className="flex flex-wrap justify-between gap-2 border-b py-3 text-sm"
-                >
-                  <dt>{a.name}</dt>
-                  <dd className="font-mono text-xs">{a[id]}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="text-sm">
-              {option.shifted} shifted activities vs baseline. Of 5 downstream
-              activities, {option.downstreamShifted} shift.
-            </p>
+            <Schedule
+              baseline={view.activeBaseline!}
+              result={result}
+              reference={view.baselineResult}
+            />
+            {option.assumptionNotes.map((note, i) => (
+              <p key={i} className="text-sm">
+                {note}
+              </p>
+            ))}
+            {result && (
+              <>
+                <p className="text-sm">
+                  {result.shiftedActivityIds.length} shifted activities vs
+                  baseline. Of {result.incidentDescendantIds.length} downstream
+                  activities, {result.downstreamAffectedActivityIds.length} have
+                  incident-caused start changes.
+                </p>
+                <ul className="space-y-2 text-sm">
+                  {result.validationWarnings.map((warning, i) => (
+                    <li key={i}>
+                      <strong>{warning.code}</strong>: {warning.message}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
-      <Notice title="Protected constraints retained">
-        System Testing stays 60 min. Full Rehearsal stays 120 min in these
-        examples. No safety procedure is shortened.
+      <Notice title="A preference is a proposal">
+        Selection does not authorize work; pending approvals remain outstanding.
+        Review the recorded assumptions and external confirmations.
       </Notice>
       <Button
         variant={selected ? "default" : "outline"}
-        className="min-h-11 h-auto w-full whitespace-normal py-3"
-        onClick={onSelect}
+        className="min-h-12 h-auto w-full whitespace-normal py-3"
+        disabled={!result}
         aria-pressed={selected}
+        onClick={() =>
+          dispatch({
+            type: "selection.set",
+            expectedIncidentId: incidentId,
+            id: option.id,
+          })
+        }
       >
         {selected
-          ? "✓ Preferred proposal · not approved"
+          ? "✓ Preferred proposal · not authorized"
           : "Mark as preferred proposal"}
       </Button>
     </Panel>
   );
 }
-export function Compare({
-  selected,
-  onSelect,
-}: {
-  selected: OptionId | null;
-  onSelect: (id: OptionId | null) => void;
-}) {
+export function Compare() {
+  const reduced = useReducedMotion();
+  const { controller, state, view, dispatch } = useLive(),
+    document = state.document!,
+    incidentId = document.activeIncidentId;
+  const active = Object.values(document.recoveryOptions).filter(
+    (o) => o.incidentId === incidentId,
+  );
+  const options = new Map(active.map((o) => [o.id, o]));
+  for (const option of Object.values(state.editing!.recoveries))
+    options.set(option.id, option);
+  const canEdit =
+    !!incidentId &&
+    !view.baselineDirty &&
+    !view.incidentDirty &&
+    view.appliedIncident!.startDelayMinutes > 0;
+  const addCanonical = () => {
+    if (!incidentId) return;
+    for (const source of [demoOptionA, demoOptionB]) {
+      const before = new Set(
+        Object.keys(controller.getSnapshot().editing!.recoveries),
+      );
+      const added = dispatch({
+        type: "recovery.add",
+        expectedIncidentId: incidentId,
+        option: {
+          name: source.name,
+          description: source.description,
+          currency: source.currency,
+          costMinorUnits: source.costMinorUnits,
+          modifications: source.modifications,
+          approvalStatus: source.approvalStatus,
+          approvalRequirements: source.approvalRequirements,
+          approvalContext: source.approvalContext,
+          assumptionNotes: source.assumptionNotes,
+        },
+      });
+      if (!added.ok) return;
+      const id = Object.keys(controller.getSnapshot().editing!.recoveries).find(
+        (id) => !before.has(id),
+      )!;
+      if (
+        !dispatch({
+          type: "recovery.apply",
+          expectedIncidentId: incidentId,
+          id,
+        }).ok
+      )
+        return;
+    }
+    dispatch({ type: "recovery.compare", expectedIncidentId: incidentId });
+  };
   return (
     <>
-      <Heading eyebrow="Recovery Compare / Power +240 min">
+      <Heading eyebrow={`Recovery Compare / ${view.event!.name}`}>
         Compare responses. Keep the conditions.
       </Heading>
-      <div className="grid gap-6 bg-foreground p-5 text-background md:grid-cols-2 md:p-7">
-        <div className="space-y-2">
-          <Kicker className="text-secondary">
-            Fixed reference / baseline v1
-          </Kicker>
-          <p className="text-[34px] font-semibold tracking-tight md:text-[44px]">
-            17:00 Doors
-          </p>
+      {view.activeBaseline && (
+        <div className="grid gap-6 bg-foreground p-5 text-background md:grid-cols-2 md:p-7">
+          <section>
+            <Kicker className="text-secondary">
+              Fixed reference / {view.activeBaseline.baselineVersion}
+            </Kicker>
+            <MilestoneMetrics
+              baseline={view.activeBaseline}
+              result={view.baselineResult}
+            />
+          </section>
+          <section>
+            <Kicker className="text-danger-soft">
+              Unmitigated incident /{" "}
+              {view.appliedIncident?.title ?? "Apply an incident first"}
+            </Kicker>
+            <MilestoneMetrics
+              baseline={view.activeBaseline}
+              result={view.impact}
+            />
+          </section>
         </div>
-        <div className="space-y-2">
-          <Kicker className="text-danger-soft">
-            Fixed reference / unmitigated incident
-          </Kicker>
-          <p className="text-[34px] font-semibold tracking-tight md:text-[44px]">
-            19:00 · +120 min
-          </p>
-        </div>
-      </div>
+      )}
       <p>
-        Two hypothetical alternatives, aligned to the same baseline and
-        incident. Neither is ranked safest or optimal. A preference is a
-        discussion proposal only.
+        Independent hypothetical alternatives. Each result reports every
+        critical milestone. No option is ranked safest or optimal. Unknown costs
+        are excluded from monetary comparisons.
       </p>
-      <div className="grid gap-6 md:grid-cols-2">
-        {(["a", "b"] as const).map((id) => (
-          <RecoveryCard
-            key={id}
-            id={id}
-            selected={selected === id}
-            onSelect={() => onSelect(id)}
-          />
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-4 border p-4">
-        <Button variant="outline" disabled className="min-h-11">
-          + Add alternative
+      <div className="flex flex-wrap items-center gap-3">
+        <RecoveryEditor disabled={!canEdit || options.size >= 3} />
+        <Button
+          className="min-h-12"
+          disabled={!view.actions.compare}
+          onClick={() => {
+            if (incidentId)
+              dispatch({
+                type: "recovery.compare",
+                expectedIncidentId: incidentId,
+              });
+          }}
+        >
+          Compare applied options
         </Button>
-        <p className="text-xs text-muted-foreground">
-          2 of 3 slots used. New alternatives and cost editing connect in Phase
-          3B; no third result has been fabricated.
-        </p>
-      </div>
-      <Notice title="Unknown cost travels with the proposal" tone="warning">
-        Both costs are Not entered. Both approvals remain pending. These
-        warnings must remain in the frozen decision brief and print output.
-      </Notice>
-      <div className="flex flex-wrap gap-4">
-        {selected ? (
-          <LinkButton to="brief">
-            View example brief with proposal {selected.toUpperCase()}
-          </LinkButton>
-        ) : (
-          <Button
-            disabled
-            className="min-h-11 h-auto max-w-full whitespace-normal py-3"
-          >
-            Select a proposal to view its example brief
+        <span className="text-sm">{options.size} of 3 slots used</span>
+        {controller.namespace === "demo" && canEdit && !options.size && (
+          <Button variant="outline" className="min-h-12" onClick={addCanonical}>
+            Add canonical demo alternatives
           </Button>
         )}
-        {selected && (
+      </div>
+      {!canEdit && (
+        <Notice title="Apply current source inputs first">
+          Apply a valid baseline and a nonzero incident before adding
+          alternatives. Resetting an incident clears its active options and
+          preference.
+        </Notice>
+      )}
+      <div className="grid items-start gap-6 md:grid-cols-2">
+        {[...options.values()].map((option, index) => {
+          const alternative = view.optionResults.find(
+            (r) => r.recoveryOptionId === option.id,
+          );
+          return (
+            <div key={option.id} className="min-w-0 space-y-3">
+              <RecoveryCard
+                option={option}
+                index={index}
+                draft={!!state.editing!.recoveries[option.id]}
+                result={
+                  alternative?.result.ok ? alternative.result.value : null
+                }
+              />
+              {alternative && !alternative.result.ok && (
+                <Errors
+                  message={alternative.result.errors
+                    .map((error) => `${error.code}: ${error.message}`)
+                    .join(" ")}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <Notice title="Unknown cost travels with the proposal" tone="warning">
+        Not entered is unknown, including when a schedule can be calculated. A
+        pending approval remains pending until you record external confirmation.
+        Both conditions stay in the brief and print output.
+      </Notice>
+      <div className="flex flex-wrap gap-4">
+        {view.briefReady ? (
+          <LinkButton to="brief">Prepare decision brief</LinkButton>
+        ) : (
+          <Button disabled className="min-h-12 h-auto whitespace-normal py-3">
+            Select a proposal to prepare its brief
+          </Button>
+        )}
+        {view.selected && (
           <Button
             variant="outline"
-            className="min-h-11"
-            onClick={() => onSelect(null)}
+            className="min-h-12"
+            onClick={() =>
+              dispatch({
+                type: "selection.clear",
+                expectedIncidentId: incidentId!,
+              })
+            }
           >
             Clear preference
           </Button>
         )}
       </div>
-      <p aria-live="polite" className="text-sm text-muted-foreground">
-        {selected
-          ? `Presentation preview: ${selected.toUpperCase()} preferred. Approval remains pending. This preference is not saved.`
+      <motion.p
+        key={view.selected?.id ?? "no-preference"}
+        initial={reduced ? false : { opacity: 0.7 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: reduced ? 0 : 0.12 }}
+        role="status"
+        aria-live="polite"
+        className="text-sm text-muted-foreground"
+      >
+        {view.selected
+          ? `${view.selected.name} preferred. Approval remains ${view.selected.approvalStatus.replace("_", " ")}. Save explicitly to preserve this preference.`
           : "No proposal preferred. Nothing is selected automatically."}
-      </p>
+      </motion.p>
     </>
   );
 }

@@ -10,8 +10,9 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { eventSample } from "@/presentation/sample";
-import type { Screen } from "@/presentation/sample";
+import { useLive } from "@/presentation/app/live";
+import { formatDateLabel } from "@/presentation/app/format";
+import type { Screen } from "@/presentation/app/routes";
 
 export function Kicker({
   children,
@@ -38,16 +39,19 @@ export function Heading({
   eyebrow: string;
   children: ReactNode;
 }) {
+  const { view } = useLive();
   return (
     <div className="space-y-3">
       <Kicker>{eyebrow}</Kicker>
       <h1
         tabIndex={-1}
-        className="text-[34px] leading-[1.08] font-semibold tracking-[-1.5px] outline-none md:text-[44px]"
+        className="text-[2.125rem] leading-[1.08] font-semibold tracking-[-1.5px] outline-none md:text-[2.75rem]"
       >
         {children}
       </h1>
-      <Kicker>{eventSample.dateLabel}</Kicker>
+      {view.event && (
+        <Kicker>{formatDateLabel(view.event).toUpperCase()}</Kicker>
+      )}
     </div>
   );
 }
@@ -67,7 +71,7 @@ export function Status({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center gap-1.5 rounded-[2px] border px-2 py-1 font-mono text-[11px] leading-snug uppercase",
+        "inline-flex max-w-full items-center gap-1.5 rounded-[2px] border px-2 py-1 font-mono text-[0.6875rem] leading-snug uppercase",
         {
           "text-muted-foreground border-muted-foreground": tone === "neutral",
           "border-primary bg-secondary text-primary": tone === "success",
@@ -135,6 +139,8 @@ export function LinkButton({
 }) {
   return (
     <Button
+      nativeButton={false}
+      role="link"
       variant={secondary ? "outline" : "default"}
       className={cn("min-h-11 h-auto whitespace-normal px-4 py-3", className)}
       render={<a href={`#${to}`} />}
@@ -187,10 +193,10 @@ export function PreviewField({
 export function PreviewFooter() {
   return (
     <footer className="border-t px-5 py-8 md:px-10">
-      <Kicker>Example states · not a live simulation</Kicker>
+      <Kicker>Local browser workspace · hypothetical simulation</Kicker>
       <p className="mt-2 text-xs text-muted-foreground">
-        Visual preview. Editing, simulation and browser saving will be connected
-        in Phase 3B.
+        Saved only in this browser when you choose Save workspace. Copy and
+        print retain the proposal's assumptions and approval warnings.
       </p>
     </footer>
   );

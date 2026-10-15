@@ -1,20 +1,18 @@
-import {
-  lazy,
-  Suspense,
-  useEffect,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { lazy, Suspense, useEffect, useSyncExternalStore } from "react";
 import { MotionConfig, motion, useReducedMotion } from "motion/react";
-import { Button } from "@/components/ui/button";
-import { workflow } from "@/presentation/sample";
-import type { OptionId, Screen } from "@/presentation/sample";
+import { workflow } from "@/presentation/app/routes";
+import type { Screen } from "@/presentation/app/routes";
 import { Landing } from "@/presentation/screens/Landing";
 import { Workspace } from "@/presentation/screens/Workspace";
 import { Scenario } from "@/presentation/screens/Scenario";
 import { Compare } from "@/presentation/screens/Compare";
 import { Brief } from "@/presentation/screens/Brief";
 import { PreviewFooter, Status } from "@/presentation/shared";
+import { WorkspaceProvider } from "@/presentation/app/WorkspaceProvider";
+import { Bootstrap } from "@/presentation/app/Bootstrap";
+import { WorkspaceStatus } from "@/presentation/app/WorkspaceStatus";
+import { useLive } from "@/presentation/app/live";
+import { subscribeNavigation } from "@/presentation/app/navigation";
 
 const Blueprint = lazy(() =>
   import("@/presentation/screens/Blueprint").then((module) => ({
@@ -31,17 +29,13 @@ const getScreen = (): Screen =>
   screens.includes(window.location.hash.slice(1))
     ? (window.location.hash.slice(1) as Screen)
     : "landing";
-const subscribe = (notify: () => void) => {
-  window.addEventListener("hashchange", notify);
-  return () => window.removeEventListener("hashchange", notify);
-};
-function PreviewApp() {
+function WorkspaceApp() {
   const screen = useSyncExternalStore(
-    subscribe,
+    subscribeNavigation,
     getScreen,
     () => "landing" as const,
   );
-  const [selected, setSelected] = useState<OptionId | null>(null);
+  const { controller } = useLive();
   const reduced = useReducedMotion();
   useEffect(() => {
     document.title = `EventFuse · ${screen === "landing" ? "Know what breaks before it happens" : screen === "workspace" ? "Workspace" : workflow.find((item) => item.route === screen)?.label}`;
@@ -49,7 +43,7 @@ function PreviewApp() {
       .querySelector<HTMLElement>("main h1")
       ?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
-  }, [screen]);
+  }, [screen, controller.key]);
   return (
     <>
       <a
@@ -69,22 +63,18 @@ function PreviewApp() {
           <header className="flex flex-wrap items-center justify-between gap-4 border-b px-5 py-3 md:px-10 md:py-5">
             <a
               href="#workspace"
-              className="inline-flex min-h-11 items-center text-[23px] font-bold tracking-[-0.8px]"
+              className="inline-flex min-h-11 items-center text-[1.4375rem] font-bold tracking-[-0.8px]"
               aria-label="EventFuse workspace"
             >
               EventFuse
             </a>
-            <Status>Fictional demo</Status>
-            <div className="hidden items-center gap-2 text-xs text-muted-foreground md:flex">
-              <span>Local browser workspace</span>
-              <Button variant="ghost" disabled>
-                Reset demo ↺
-              </Button>
-              <a href="#landing" className="p-2 underline underline-offset-4">
-                About
-              </a>
-            </div>
+            <Status>
+              {controller.namespace === "demo"
+                ? "Fictional demo"
+                : "Local event"}
+            </Status>
           </header>
+          <WorkspaceStatus key={`status:${controller.key}`} />
           <nav
             aria-label="Production workflow"
             className="grid grid-cols-4 border-b px-5 md:flex md:gap-10 md:px-10"
@@ -94,7 +84,7 @@ function PreviewApp() {
                 key={item.route}
                 href={`#${item.route}`}
                 aria-current={screen === item.route ? "page" : undefined}
-                className={`relative flex min-h-12 items-center justify-center py-3 text-xs md:justify-start md:font-mono md:text-[13px] ${screen === item.route ? "font-semibold text-primary" : "text-muted-foreground"}`}
+                className={`relative flex min-h-12 items-center justify-center py-3 text-xs md:justify-start md:font-mono md:text-[0.8125rem] ${screen === item.route ? "font-semibold text-primary" : "text-muted-foreground"}`}
               >
                 <span className="min-w-0 wrap-anywhere text-center md:hidden">
                   {item.mobile}
@@ -113,6 +103,7 @@ function PreviewApp() {
             ))}
           </nav>
           <main
+            key={`workspace:${controller.key}`}
             id="main-content"
             tabIndex={-1}
             className="mx-auto max-w-[1600px] space-y-7 px-5 py-7 outline-none md:px-10 md:py-10"
@@ -124,10 +115,8 @@ function PreviewApp() {
               </Suspense>
             )}
             {screen === "scenario" && <Scenario />}
-            {screen === "compare" && (
-              <Compare selected={selected} onSelect={setSelected} />
-            )}
-            {screen === "brief" && <Brief optionId={selected} />}
+            {screen === "compare" && <Compare />}
+            {screen === "brief" && <Brief />}
           </main>
           <PreviewFooter />
         </>
@@ -138,7 +127,11 @@ function PreviewApp() {
 export default function App() {
   return (
     <MotionConfig reducedMotion="user">
-      <PreviewApp />
+      <WorkspaceProvider>
+        <Bootstrap>
+          <WorkspaceApp />
+        </Bootstrap>
+      </WorkspaceProvider>
     </MotionConfig>
   );
 }

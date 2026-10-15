@@ -134,13 +134,5 @@ export const graphConnections = [
   ["testing-rehearsal", "testing", "rehearsal"],
   ["rehearsal-doors", "rehearsal", "doors"],
 ] as const;
-export const workflow = [
-  { route: "blueprint", label: "Blueprint", mobile: "Plan" },
-  { route: "scenario", label: "Scenario Lab", mobile: "Disrupt" },
-  { route: "compare", label: "Recovery Compare", mobile: "Compare" },
-  { route: "brief", label: "Decision Brief", mobile: "Brief" },
-] as const;
-export type Screen =
-  | "landing"
-  | "workspace"
-  | (typeof workflow)[number]["route"];
+export { workflow } from '@/presentation/app/routes';
+export type { Screen } from '@/presentation/app/routes';
