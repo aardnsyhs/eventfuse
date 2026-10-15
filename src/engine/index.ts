@@ -1,43 +1,114 @@
-import type { ComparisonRequest, EngineRequest } from '../domain/engine-api'
-import type { BriefMetadata, RecoveryCostDraft } from '../domain/types'
-import { DEFAULT_LIMITS } from '../domain/types'
-import { parseRecoveryCost, validateBaseline, validateIncident, validateLimits, validateCurrency, validateRecoveryOption } from '../domain/validation'
-import { buildDecisionBrief as buildBrief } from './brief'
-import { compareRecoveries as compare } from './compare'
-import { calculateScenario } from './scenarios'
-import type { Result } from './errors'
-import type { DecisionBrief, ScenarioResult } from '../domain/types'
-export type { Result } from './errors'
-export type { ErrorCode, ValidationError } from './errors'
-export type * from '../domain/types'
-export type * from '../domain/engine-api'
+import type { ComparisonRequest, EngineRequest } from "../domain/engine-api";
+import type {
+  BaselineSnapshot,
+  BriefMetadata,
+  DecisionBrief,
+  RecoveryCostDraft,
+  ScenarioResult,
+} from "../domain/types";
+import { DEFAULT_LIMITS } from "../domain/types";
+import {
+  idIsValid,
+  isRecord,
+  parseRecoveryCost,
+  shapeErrors,
+  validateBaseline as validateSnapshot,
+  validateIncident,
+  validateLimits,
+  validateCurrency,
+  validateRecoveryOption,
+} from "../domain/validation";
+import { buildDecisionBrief as buildBrief } from "./brief";
+import { compareRecoveries as compare } from "./compare";
+import { calculateScenario } from "./scenarios";
+import { error, failure, success, type Result } from "./errors";
+export type { Result, ErrorCode, ValidationError } from "./errors";
+export type * from "../domain/types";
+export type * from "../domain/engine-api";
+
+export const validateBaseline = (
+  input: unknown,
+  mode: "draft" | "runnable",
+): Result<BaselineSnapshot> => validateSnapshot(input, mode);
 
 export const validateRequest = (input: unknown): Result<EngineRequest> => {
-  if (!input || typeof input !== 'object') return { ok: false, errors: [{ code: 'INVALID_SHAPE', path: '/', entityId: null, message: 'Request must be an object.', relatedIds: [] }] }
-  const request = input as Record<string, unknown>
-  const limits = request.limits && typeof request.limits === 'object' ? request.limits as typeof DEFAULT_LIMITS : DEFAULT_LIMITS
-  const limitResult = validateLimits(limits); if (!limitResult.ok) return limitResult
-  const baselineResult = validateBaseline(request.baseline, 'runnable', limits); if (!baselineResult.ok) return baselineResult
-  const currencyResult = validateCurrency(String(request.currency)); if (!currencyResult.ok) return currencyResult
-  if (request.kind === 'baseline') return { ok: true, value: request as unknown as EngineRequest }
-  const incidentResult = validateIncident(request.incident, baselineResult.value); if (!incidentResult.ok) return incidentResult
-  if (request.kind === 'incident') return { ok: true, value: request as unknown as EngineRequest }
-  if (request.kind === 'recovery') {
-    const recoveryResult = validateRecoveryOption(request.recovery, baselineResult.value, incidentResult.value, String(request.currency), limits); if (!recoveryResult.ok) return recoveryResult
-    return { ok: true, value: request as unknown as EngineRequest }
+  if (!isRecord(input))
+    return failure(error("INVALID_SHAPE", "/", "Request must be an object."));
+  if (
+    input.kind !== "baseline" &&
+    input.kind !== "incident" &&
+    input.kind !== "recovery"
+  )
+    return failure(error("INVALID_SHAPE", "/kind", "Unknown request kind."));
+  const required = [
+    "kind",
+    "baseline",
+    "currency",
+    "limits",
+    "scenarioId",
+    ...(input.kind !== "baseline" ? ["incident"] : []),
+    ...(input.kind === "recovery" ? ["recovery"] : []),
+  ];
+  const shape = shapeErrors(input, required, [], "");
+  if (shape.length) return failure(...shape);
+  if (!idIsValid(input.scenarioId))
+    return failure(
+      error(
+        "INVALID_TEXT",
+        "/scenarioId",
+        "Scenario ID must be a safe nonempty string.",
+      ),
+    );
+  const limits = validateLimits(input.limits);
+  if (!limits.ok) return limits;
+  const baseline = validateSnapshot(input.baseline, "runnable", limits.value);
+  if (!baseline.ok) return baseline;
+  const currency = validateCurrency(input.currency as string);
+  if (!currency.ok) return currency;
+  if (input.kind !== "baseline") {
+    const incident = validateIncident(input.incident, baseline.value);
+    if (!incident.ok) return incident;
+    if (incident.value.startDelayMinutes > limits.value.maxMinute)
+      return failure(
+        error(
+          "OUT_OF_RANGE",
+          "/incident/startDelayMinutes",
+          "Delay exceeds the configured minute range.",
+          incident.value.id,
+        ),
+      );
+    if (input.kind === "recovery") {
+      const recovery = validateRecoveryOption(
+        input.recovery,
+        baseline.value,
+        incident.value,
+        input.currency as string,
+        limits.value,
+      );
+      if (!recovery.ok) return recovery;
+    }
   }
-  return { ok: false, errors: [{ code: 'INVALID_SHAPE', path: '/kind', entityId: null, message: 'Unknown request kind.', relatedIds: [] }] }
-}
+  return success(structuredClone(input) as unknown as EngineRequest);
+};
 
 export const calculate = (request: EngineRequest): Result<ScenarioResult> => {
-  const valid = validateRequest(request); if (!valid.ok) return valid
-  const result = calculateScenario(request as never)
-  if (!result.ok) return result
-  return { ok: true, value: result.value.recovery ?? result.value.incident ?? result.value.baseline }
-}
+  const valid = validateRequest(request);
+  if (!valid.ok) return valid;
+  const result = calculateScenario(valid.value);
+  return result.ok
+    ? success(
+        result.value.recovery ?? result.value.incident ?? result.value.baseline,
+      )
+    : result;
+};
 
-export const compareRecoveries = (request: ComparisonRequest) => compare(request)
-export const buildDecisionBrief = (request: ComparisonRequest, selectedRecoveryOptionId: string, metadata: BriefMetadata): Result<DecisionBrief> => buildBrief(request, selectedRecoveryOptionId, metadata)
-export { parseRecoveryCost }
-export { DEFAULT_LIMITS }
-export type { RecoveryCostDraft }
+export const compareRecoveries = (request: ComparisonRequest) =>
+  compare(request);
+export const buildDecisionBrief = (
+  request: ComparisonRequest,
+  selectedRecoveryOptionId: string,
+  metadata: BriefMetadata,
+): Result<DecisionBrief> =>
+  buildBrief(request, selectedRecoveryOptionId, metadata);
+export { parseRecoveryCost, DEFAULT_LIMITS };
+export type { RecoveryCostDraft };
