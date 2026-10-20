@@ -1,7 +1,7 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import type { VariantProps } from "class-variance-authority";
 import { cn } from "cn";
-import { buttonVariants } from "./button-variants";
+import { buttonVariants } from "@/components/ui/button-variants";
 
 function Button({
   className,
@@ -12,6 +12,7 @@ function Button({
   return (
     <ButtonPrimitive
       data-slot="button"
+      data-variant={variant}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
