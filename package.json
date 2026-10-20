@@ -3,19 +3,17 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "yarn@4.18.0",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc -b --pretty false",
-    "test": "vitest run",
-    "test:browser": "playwright test"
+    "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
     "@date-fns/utc": "^2.1.1",
-    "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@tailwindcss/vite": "^4.3.3",
@@ -33,7 +31,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "^1.64.1",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
@@ -45,7 +42,6 @@
     "shadcn": "^4.21.5",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.69.0",
-    "vite": "^8.3.0",
-    "vitest": "^5.0.4"
+    "vite": "^8.3.0"
   }
 }
