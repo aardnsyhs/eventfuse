@@ -23,3 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.env.*
+!.env.example
+
+# Generated test output
+/test-results/
+/playwright-report/
+/coverage/
