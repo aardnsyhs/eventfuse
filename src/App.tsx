@@ -7,7 +7,8 @@ import { Workspace } from "@/presentation/screens/Workspace";
 import { Scenario } from "@/presentation/screens/Scenario";
 import { Compare } from "@/presentation/screens/Compare";
 import { Brief } from "@/presentation/screens/Brief";
-import { PreviewFooter, Status } from "@/presentation/shared";
+import { PreviewFooter } from "@/presentation/shared";
+import { AppHeader } from "@/presentation/app/Navbar";
 import { WorkspaceProvider } from "@/presentation/app/WorkspaceProvider";
 import { Bootstrap } from "@/presentation/app/Bootstrap";
 import { WorkspaceStatus } from "@/presentation/app/WorkspaceStatus";
@@ -60,20 +61,7 @@ function WorkspaceApp() {
         <Landing />
       ) : (
         <>
-          <header className="flex flex-wrap items-center justify-between gap-4 border-b px-5 py-3 md:px-10 md:py-5">
-            <a
-              href="#workspace"
-              className="inline-flex min-h-11 items-center text-[1.4375rem] font-bold tracking-[-0.8px]"
-              aria-label="EventFuse workspace"
-            >
-              EventFuse
-            </a>
-            <Status>
-              {controller.namespace === "demo"
-                ? "Fictional demo"
-                : "Local event"}
-            </Status>
-          </header>
+          <AppHeader mode="app" screen={screen} namespace={controller.namespace} />
           <WorkspaceStatus key={`status:${controller.key}`} />
           <nav
             aria-label="Production workflow"

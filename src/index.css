@@ -8,25 +8,66 @@
 :root {
   color-scheme: light;
   --background: #f5f3ec;
-  --foreground: #202a27;
+  --foreground: #1c262b;
   --card: #fffdf7;
-  --card-foreground: #202a27;
+  --card-foreground: #1c262b;
   --popover: #fffdf7;
-  --popover-foreground: #202a27;
-  --primary: #235c46;
+  --popover-foreground: #1c262b;
+  --primary: #18375d;
   --primary-foreground: #ffffff;
-  --secondary: #e3ebdf;
-  --secondary-foreground: #202a27;
-  --muted: #e3ebdf;
-  --muted-foreground: #626a63;
-  --accent: #e3ebdf;
-  --accent-foreground: #235c46;
+  --secondary: #e2e8f0;
+  --secondary-foreground: #18375d;
+  --muted: #e6ecf2;
+  --muted-foreground: #5a6672;
+  --accent: #e2e8f0;
+  --accent-foreground: #18375d;
   --destructive: #ae402e;
-  --border: #c9cdc3;
-  --input: #c9cdc3;
-  --ring: #92581b;
+  --destructive-foreground: #ffffff;
+  --border: #cbd5e1;
+  --border-hover: #94a3b8;
+  --border-focus: #18375d;
+  --input: #cbd5e1;
+  --ring: #26558e;
   --radius: 0.25rem;
+  --color-warning: #92581b;
+  --color-warning-soft: #fef3c7;
+  --color-danger-soft: #fee2e2;
+  --color-night: #102642;
+  --color-baseline-fill: #cbd5e1;
 }
+
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0d1218;
+  --foreground: #eef2f6;
+  --card: #151d26;
+  --card-foreground: #eef2f6;
+  --popover: #151d26;
+  --popover-foreground: #eef2f6;
+  --primary: #5b98e8;
+  --primary-foreground: #0d1218;
+  --secondary: #1c2633;
+  --secondary-foreground: #eef2f6;
+  --muted: #1c2633;
+  --muted-foreground: #94a3b8;
+  --accent: #1c2633;
+  --accent-foreground: #5b98e8;
+  --destructive: #e0523e;
+  --destructive-foreground: #ffffff;
+  --border: #283546;
+  --border-hover: #3d4f66;
+  --border-focus: #5b98e8;
+  --input: #283546;
+  --ring: #5b98e8;
+  --radius: 0.25rem;
+  --color-warning: #d97706;
+  --color-warning-soft: #382811;
+  --color-danger-soft: #381816;
+  --color-night: #080d12;
+  --color-baseline-fill: #283546;
+}
+
 @theme inline {
   --font-sans: "Inter Variable", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
@@ -46,32 +87,37 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-border-focus: var(--border-focus);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-warning: #92581b;
-  --color-warning-soft: #f3e7cc;
-  --color-danger-soft: #f8e5dd;
-  --color-night: #182e27;
-  --color-baseline-fill: #dadcd4;
+  --color-warning: var(--color-warning);
+  --color-warning-soft: var(--color-warning-soft);
+  --color-danger-soft: var(--color-danger-soft);
+  --color-night: var(--color-night);
+  --color-baseline-fill: var(--color-baseline-fill);
   --radius-sm: 2px;
   --radius-md: 4px;
   --radius-lg: 4px;
   --radius-xl: 4px;
   --radius-2xl: 4px;
 }
+
 @layer base {
   * {
     @apply border-border;
   }
   body {
-    @apply m-0 bg-background font-sans text-base leading-[1.45] text-foreground antialiased;
+    @apply m-0 bg-background font-sans text-base leading-[1.45] text-foreground antialiased transition-colors duration-150;
     overflow-wrap: anywhere;
   }
   button,
   a,
   input,
   select,
+  textarea,
   summary {
     -webkit-tap-highlight-color: transparent;
   }
@@ -99,19 +145,28 @@
     @apply bg-secondary text-foreground;
   }
 }
+
 .react-flow__handle {
   background: var(--primary);
   border-color: var(--card);
 }
 .react-flow__controls-button {
   background: var(--card);
-  border-color: var(--muted-foreground);
+  border-color: var(--border);
   color: var(--foreground);
   min-width: 44px;
   min-height: 44px;
 }
+.react-flow__controls-button:hover {
+  background: var(--secondary);
+}
 .react-flow__controls-button svg {
   fill: currentColor;
+}
+.react-flow .react-flow__attribution {
+  background: var(--card);
+  border: 1px solid var(--border);
+  opacity: 0.85;
 }
 .react-flow .react-flow__attribution a {
   display: inline-flex;
@@ -119,10 +174,25 @@
   min-height: 44px;
   color: var(--primary);
 }
+.react-flow__edge-path {
+  stroke: var(--primary);
+}
+
 @media print {
   body {
-    background: white;
-    color: black;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .dark,
+  [data-theme="dark"] {
+    --background: #ffffff !important;
+    --foreground: #000000 !important;
+    --card: #ffffff !important;
+    --card-foreground: #000000 !important;
+    --border: #cbd5e1 !important;
+    --muted-foreground: #475569 !important;
+    --primary: #18375d !important;
+    --primary-foreground: #ffffff !important;
   }
   header,
   nav,
@@ -150,6 +220,7 @@
     break-inside: avoid;
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

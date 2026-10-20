@@ -7,36 +7,14 @@ import { demoOptionA, demoOptionB } from "@/demo/fixtures";
 import { MilestoneMetrics } from "@/presentation/MilestoneMetrics";
 import { eventTime } from "@/presentation/app/time";
 import { moneyLabel } from "@/presentation/app/format";
+import { AppHeader } from "@/presentation/app/Navbar";
 
 export function Landing() {
   const baseline = referenceDemo.activeBaseline!,
     impact = referenceDemo.impact!;
   return (
     <>
-      <header
-        id="landing"
-        className="flex flex-wrap items-center justify-between gap-4 border-b px-5 py-4 md:px-8"
-      >
-        <a
-          href="#landing"
-          className="inline-flex min-h-11 items-center py-2 text-[1.4375rem] font-bold tracking-[-0.8px]"
-        >
-          EventFuse
-        </a>
-        <nav
-          aria-label="About EventFuse"
-          className="hidden gap-7 font-mono text-xs text-muted-foreground md:flex"
-        >
-          <a href="#why" className="inline-flex min-h-11 items-center">
-            Why EventFuse
-          </a>
-          <a href="#workflow" className="inline-flex min-h-11 items-center">
-            The workflow
-          </a>
-          <span>Fictional demo</span>
-        </nav>
-        <DemoEntry>Open demo</DemoEntry>
-      </header>
+      <AppHeader mode="landing" screen="landing" />
       <main
         id="main-content"
         tabIndex={-1}

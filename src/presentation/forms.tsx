@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 import { usePendingForm } from "@/presentation/app/usePendingForm";
 import type { ComponentProps, ReactNode } from "react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import type { AppError } from "@/application";
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function Field({
   label,
@@ -33,7 +36,6 @@ export function Field({
         {...props}
         id={id}
         aria-describedby={hint ? `${id}-hint` : undefined}
-        className="h-12 min-w-0 rounded border-muted-foreground bg-card text-base"
       />
       {hint && (
         <p id={`${id}-hint`} className="text-xs text-muted-foreground">
@@ -43,9 +45,11 @@ export function Field({
     </div>
   );
 }
+
 export function Choice({
   label,
   children,
+  className,
   ...props
 }: ComponentProps<"select"> & { label: string }) {
   const id = useId();
@@ -57,20 +61,30 @@ export function Choice({
       >
         {label}
       </Label>
-      <select
-        {...props}
-        id={id}
-        className="min-h-12 w-full min-w-0 rounded border border-muted-foreground bg-card px-3 text-base"
-      >
-        {children}
-      </select>
+      <div className="relative">
+        <select
+          {...props}
+          id={id}
+          className={cn(
+            "min-h-11 w-full min-w-0 appearance-none rounded-lg border border-border bg-card pr-10 pl-3 py-2 text-base text-foreground transition-colors hover:border-border-hover focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring outline-none disabled:cursor-not-allowed disabled:bg-muted/50 disabled:opacity-50 aria-invalid:border-destructive md:text-sm",
+            className,
+          )}
+        >
+          {children}
+        </select>
+        <ChevronDown
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground"
+        />
+      </div>
     </div>
   );
 }
+
 export function TextArea({
   label,
   ...props
-}: ComponentProps<"textarea"> & { label: string }) {
+}: ComponentProps<typeof Textarea> & { label: string }) {
   const id = useId();
   return (
     <div className="space-y-2">
@@ -80,14 +94,11 @@ export function TextArea({
       >
         {label}
       </Label>
-      <textarea
-        {...props}
-        id={id}
-        className="min-h-24 w-full rounded border border-muted-foreground bg-card p-3 text-base"
-      />
+      <Textarea {...props} id={id} />
     </div>
   );
 }
+
 export function Errors({
   errors,
   message,
@@ -99,15 +110,20 @@ export function Errors({
   return (
     <div
       role="alert"
-      className="space-y-2 border-l-2 border-destructive bg-danger-soft p-4 text-sm"
+      className="space-y-2 border-l-2 border-destructive bg-danger-soft p-4 text-sm text-foreground"
     >
-      {message && <p>{message}</p>}
+      {message && <p className="font-medium text-destructive">{message}</p>}
       {errors?.map((error, index) => (
         <p key={index}>
           <strong>{error.code}</strong> {error.message}{" "}
-          <span className="font-mono text-xs">{error.path}</span>
+          <span className="font-mono text-xs text-muted-foreground">
+            {error.path}
+          </span>
           {error.validationErrors?.map((e) => (
-            <span key={e.path + e.code} className="block font-mono text-xs">
+            <span
+              key={e.path + e.code}
+              className="block font-mono text-xs text-muted-foreground"
+            >
               {e.code} {e.path}: {e.message}
             </span>
           ))}
@@ -116,6 +132,7 @@ export function Errors({
     </div>
   );
 }
+
 export function Editor({
   label,
   title,
@@ -151,16 +168,20 @@ export function Editor({
         render={
           <Button
             variant="outline"
-            className="min-h-11 h-auto whitespace-normal py-3"
+            className="min-h-11 h-auto whitespace-normal py-2.5"
           />
         }
       >
         {label}
       </DialogTrigger>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-none border border-muted-foreground p-6 sm:max-w-xl">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-lg sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle className="pr-9 text-2xl">{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogTitle className="pr-9 text-2xl font-semibold tracking-tight">
+            {title}
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            {description}
+          </DialogDescription>
         </DialogHeader>
         <div
           onChangeCapture={() => setDirty(true)}
@@ -174,6 +195,7 @@ export function Editor({
     </Dialog>
   );
 }
+
 export function Confirm({
   label,
   children,
@@ -187,7 +209,7 @@ export function Confirm({
   return (
     <Button
       variant="outline"
-      className="min-h-11 h-auto whitespace-normal py-3"
+      className="min-h-11 h-auto whitespace-normal py-2.5"
       onClick={() => {
         if (window.confirm(typeof children === "string" ? children : label))
           void action();
