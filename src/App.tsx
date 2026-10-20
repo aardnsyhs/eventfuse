@@ -14,6 +14,7 @@ import { Bootstrap } from "@/presentation/app/Bootstrap";
 import { WorkspaceStatus } from "@/presentation/app/WorkspaceStatus";
 import { useLive } from "@/presentation/app/live";
 import { subscribeNavigation } from "@/presentation/app/navigation";
+import { ConfirmationProvider } from "@/presentation/app/ConfirmationProvider";
 
 const Blueprint = lazy(() =>
   import("@/presentation/screens/Blueprint").then((module) => ({
@@ -61,7 +62,11 @@ function WorkspaceApp() {
         <Landing />
       ) : (
         <>
-          <AppHeader mode="app" screen={screen} namespace={controller.namespace} />
+          <AppHeader
+            mode="app"
+            screen={screen}
+            namespace={controller.namespace}
+          />
           <WorkspaceStatus key={`status:${controller.key}`} />
           <nav
             aria-label="Production workflow"
@@ -115,11 +120,13 @@ function WorkspaceApp() {
 export default function App() {
   return (
     <MotionConfig reducedMotion="user">
-      <WorkspaceProvider>
-        <Bootstrap>
-          <WorkspaceApp />
-        </Bootstrap>
-      </WorkspaceProvider>
+      <ConfirmationProvider>
+        <WorkspaceProvider>
+          <Bootstrap>
+            <WorkspaceApp />
+          </Bootstrap>
+        </WorkspaceProvider>
+      </ConfirmationProvider>
     </MotionConfig>
   );
 }

@@ -6,6 +6,7 @@ import { openDemo, DEMO_EVENT_ID } from "@/demo/install";
 import { useWorkspaceContext } from "@/presentation/app/workspace-context";
 import { Errors } from "@/presentation/forms";
 import { cn } from "@/lib/utils";
+import { useConfirmation } from "@/presentation/app/confirmation-context";
 
 export function DemoEntry({
   children,
@@ -19,6 +20,7 @@ export function DemoEntry({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   const operation = useRef(false);
+  const ask = useConfirmation();
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -34,15 +36,15 @@ export function DemoEntry({
         disabled={busy}
         className={cn("min-h-11 h-auto whitespace-normal px-4 py-3", className)}
         render={<a href="#workspace" />}
-        onClick={(event) => {
+        onClick={async (event) => {
           event.preventDefault();
           if (operation.current) return;
           if (
             controller?.namespace === "workspace" &&
             controller.getSnapshot().persistence.status !== "saved" &&
-            !window.confirm(
+            !(await ask(
               "Switch to the fictional demo? This local event stays in memory, but must be saved before this tab closes.",
-            )
+            ))
           )
             return;
           operation.current = true;

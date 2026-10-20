@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Event } from "@/engine";
-import { Choice, Field } from "@/presentation/forms";
+import { Choice } from "@/presentation/forms";
+import { DateField } from "@/presentation/DateField";
 import { resolveLocalTime } from "@/presentation/app/time";
 
 export function useWallTime(initial: string, event: Event) {
@@ -19,13 +20,12 @@ export function useWallTime(initial: string, event: Event) {
     read,
     field: (label: string) => (
       <>
-        <Field
+        <DateField
           label={label}
-          type="datetime-local"
-          step="60"
+          dateTime
           value={value}
-          onChange={(e) => {
-            setValue(e.target.value);
+          onChange={(next) => {
+            setValue(next);
             setChosen("");
             setCandidates([]);
           }}

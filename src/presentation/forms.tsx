@@ -1,4 +1,11 @@
-import { useId, useState } from "react";
+import {
+  Children,
+  isValidElement,
+  useId,
+  useRef,
+  useState,
+  useContext,
+} from "react";
 import { usePendingForm } from "@/presentation/app/usePendingForm";
 import type { ComponentProps, ReactNode } from "react";
 import { Input } from "@/components/ui/input";
@@ -14,8 +21,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import type { AppError } from "@/application";
-import { ChevronDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { useConfirmation } from "@/presentation/app/confirmation-context";
+import { FormDirtyContext } from "@/presentation/app/form-dirty";
 
 export function Field({
   label,
@@ -50,9 +64,26 @@ export function Choice({
   label,
   children,
   className,
-  ...props
-}: ComponentProps<"select"> & { label: string }) {
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+  value: string;
+  disabled?: boolean;
+  onChange: (event: { target: { value: string } }) => void;
+}) {
   const id = useId();
+  const markDirty = useContext(FormDirtyContext);
+  const items = Children.toArray(children)
+    .filter(isValidElement<ComponentProps<"option">>)
+    .map((option) => ({
+      value: String(option.props.value ?? option.props.children),
+      label: option.props.children,
+      disabled: option.props.disabled,
+    }));
   return (
     <div className="min-w-0 space-y-2">
       <Label
@@ -61,22 +92,32 @@ export function Choice({
       >
         {label}
       </Label>
-      <div className="relative">
-        <select
-          {...props}
-          id={id}
-          className={cn(
-            "min-h-11 w-full min-w-0 appearance-none rounded-lg border border-border bg-card pr-10 pl-3 py-2 text-base text-foreground transition-colors hover:border-border-hover focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring outline-none disabled:cursor-not-allowed disabled:bg-muted/50 disabled:opacity-50 aria-invalid:border-destructive md:text-sm",
-            className,
-          )}
-        >
-          {children}
-        </select>
-        <ChevronDown
-          aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground"
-        />
-      </div>
+      <Select
+        items={items}
+        value={value}
+        disabled={disabled}
+        onValueChange={(next) => {
+          if (next !== null) {
+            if (next !== value) markDirty();
+            onChange({ target: { value: next } });
+          }
+        }}
+      >
+        <SelectTrigger id={id} className={`w-full ${className ?? ""}`}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent alignItemWithTrigger={false}>
+          {items.map((item) => (
+            <SelectItem
+              key={item.value}
+              value={item.value}
+              disabled={item.disabled}
+            >
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -149,15 +190,21 @@ export function Editor({
   onOpenChange: (open: boolean) => void;
 }) {
   const [dirty, setDirty] = useState(false);
+  const trigger = useRef<HTMLButtonElement | null>(null);
+  const ask = useConfirmation();
   usePendingForm(open && dirty);
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => {
+      onOpenChange={async (next) => {
         if (
           !next &&
           dirty &&
-          !window.confirm("Discard these unapplied form changes?")
+          !(await ask(
+            "Discard these unapplied form changes?",
+            "Discard form changes?",
+            trigger.current,
+          ))
         )
           return;
         setDirty(false);
@@ -167,6 +214,7 @@ export function Editor({
       <DialogTrigger
         render={
           <Button
+            ref={trigger}
             variant="outline"
             className="min-h-11 h-auto whitespace-normal py-2.5"
           />
@@ -189,7 +237,9 @@ export function Editor({
             if ((event.target as Element).closest("button")) setDirty(true);
           }}
         >
-          {children}
+          <FormDirtyContext value={() => setDirty(true)}>
+            {children}
+          </FormDirtyContext>
         </div>
       </DialogContent>
     </Dialog>
@@ -205,13 +255,20 @@ export function Confirm({
   children: ReactNode;
   action: () => void | Promise<void>;
 }) {
-  // Confirmation is required for destructive resets and draft replacement.
+  const ask = useConfirmation();
   return (
     <Button
       variant="outline"
       className="min-h-11 h-auto whitespace-normal py-2.5"
-      onClick={() => {
-        if (window.confirm(typeof children === "string" ? children : label))
+      onClick={async () => {
+        if (
+          await ask(
+            typeof children === "string"
+              ? children
+              : Children.toArray(children).join(""),
+            label,
+          )
+        )
           void action();
       }}
     >

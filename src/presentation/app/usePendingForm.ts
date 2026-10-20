@@ -1,11 +1,16 @@
 import { useLayoutEffect } from "react";
 import { guardNavigation } from "@/presentation/app/navigation";
+import { useConfirmation } from "@/presentation/app/confirmation-context";
 
 export function usePendingForm(dirty: boolean) {
+  const ask = useConfirmation();
   useLayoutEffect(() => {
     if (!dirty) return;
     const removeGuard = guardNavigation(() =>
-      window.confirm("Leave these unapplied form changes? They will be lost."),
+      ask(
+        "Leave these unapplied form changes? They will be lost.",
+        "Leave unapplied changes?",
+      ),
     );
     const unload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
@@ -16,5 +21,5 @@ export function usePendingForm(dirty: boolean) {
       removeGuard();
       window.removeEventListener("beforeunload", unload);
     };
-  }, [dirty]);
+  }, [dirty, ask]);
 }

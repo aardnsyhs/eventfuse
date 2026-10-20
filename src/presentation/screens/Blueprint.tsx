@@ -27,8 +27,10 @@ import { Choice, Confirm } from "@/presentation/forms";
 import { useLive } from "@/presentation/app/live";
 import { eventTime } from "@/presentation/app/time";
 import { inspectBaseline } from "@/presentation/app/history";
+import { useConfirmation } from "@/presentation/app/confirmation-context";
 
 export function Blueprint() {
+  const ask = useConfirmation();
   const { state, view, dispatch } = useLive(),
     baseline = state.editing!.baseline;
   const [revision, setRevision] = useState("");
@@ -83,10 +85,10 @@ export function Blueprint() {
         <Button
           className="min-h-12"
           disabled={!view.actions.applyBaseline}
-          onClick={() => {
+          onClick={async () => {
             if (
               !view.activeBaseline ||
-              window.confirm(
+              await ask(
                 "Apply a new baseline revision? Current incident and preferred proposal will be cleared. Historical sources remain available.",
               )
             )
@@ -278,9 +280,9 @@ export function Blueprint() {
           variant="outline"
           className="min-h-11"
           disabled={!revision || !state.document!.baselineVersions[revision]}
-          onClick={() => {
+          onClick={async () => {
             if (
-              window.confirm(
+              await ask(
                 "Replace the editable baseline draft with this revision? Its historical source will remain immutable.",
               )
             )

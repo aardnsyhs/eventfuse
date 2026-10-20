@@ -68,6 +68,7 @@ export function WorkspaceStatus() {
         </span>
         <Button
           className="min-h-11"
+          aria-busy={busy}
           disabled={!view.actions.save}
           onClick={() => {
             setNotice("");
@@ -86,6 +87,7 @@ export function WorkspaceStatus() {
           <Confirm
             label="Reload saved workspace"
             action={async () => {
+              setNotice("");
               const result = await controller.load(
                 controller.namespace,
                 controller.eventId,

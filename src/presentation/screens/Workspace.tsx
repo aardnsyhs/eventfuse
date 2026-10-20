@@ -14,8 +14,10 @@ import { EventEditor } from "@/presentation/EventEditor";
 import { Choice, Errors } from "@/presentation/forms";
 import { eventTime } from "@/presentation/app/time";
 import { openDemo, DEMO_EVENT_ID } from "@/demo/install";
+import { useConfirmation } from "@/presentation/app/confirmation-context";
 
 export function Workspace() {
+  const ask = useConfirmation();
   const { controller, state, view } = useLive();
   const {
     catalog,
@@ -41,9 +43,9 @@ export function Workspace() {
   const switchTo = async (demo: boolean, eventId = choice) => {
     if (
       state.persistence.status !== "saved" &&
-      !window.confirm(
+      !(await ask(
         "Leave this unsaved event open in memory and switch events? Save first if you need it after this tab closes.",
-      )
+      ))
     )
       return;
     setBusy(true);

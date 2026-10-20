@@ -140,8 +140,8 @@ export function Landing() {
             ))}
           </ol>
         </section>
-        <section className="space-y-6 bg-night px-5 py-10 text-background md:px-16 md:py-14">
-          <Kicker className="text-secondary">
+        <section className="space-y-6 bg-night px-5 py-10 text-white md:px-16 md:py-14">
+          <Kicker className="text-white">
             05 / Clear boundaries build trust
           </Kicker>
           <h2>A sandbox, not an instruction to proceed.</h2>
@@ -150,7 +150,7 @@ export function Landing() {
             Protected testing stays protected. A preferred option is a proposal,
             never an automatic approval.
           </p>
-          <p className="text-sm text-secondary">
+          <p className="text-sm text-white">
             Deterministic finish-to-start propagation, transparent user-entered
             assumptions, and recorded approval status. No generated
             recommendations, vendor availability checks, live collaboration, or

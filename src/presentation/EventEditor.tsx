@@ -7,6 +7,7 @@ import { Choice, Editor, Errors, Field, TextArea } from "@/presentation/forms";
 import { auditInstant, newId } from "@/presentation/app/live";
 import { localInput, resolveLocalTime } from "@/presentation/app/time";
 import { useWorkspaceContext } from "@/presentation/app/workspace-context";
+import { DateField } from "@/presentation/DateField";
 
 export function EventEditor({
   create = false,
@@ -151,12 +152,11 @@ export function EventEditor({
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-        <Field
+        <DateField
           label="Event date"
-          type="date"
           value={date}
-          onChange={(e) => {
-            setDate(e.target.value);
+          onChange={(value) => {
+            setDate(value);
             setChosen("");
           }}
         />
@@ -169,13 +169,12 @@ export function EventEditor({
           }}
           hint="For example Asia/Jakarta or America/New_York. The browser's timezone is never assumed."
         />
-        <Field
+        <DateField
           label="Production reference (event local)"
-          type="datetime-local"
-          step="60"
+          dateTime
           value={reference}
-          onChange={(e) => {
-            setReference(e.target.value);
+          onChange={(value) => {
+            setReference(value);
             setChosen("");
           }}
           hint="Elapsed activity minutes are measured from this instant. DST gaps are rejected; repeated times require an explicit UTC choice."
